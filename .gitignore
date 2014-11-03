@@ -1,2 +1,8 @@
-# mvtools dir
-/mvtools-v2.5.11.3
+# Ignore everything
+*
+
+# But not these files...
+!.gitignore
+!InterleavedClips.h
+!InterleavedClips.cpp
+!Interface.cpp
