@@ -3,6 +3,10 @@
 
 # But not these files...
 !.gitignore
-!InterleavedClips.h
-!InterleavedClips.cpp
 !Interface.cpp
+!AnalyseErrors.h
+!AnalyseErrors.cpp
+!DivideFps.h
+!DivideFps.cpp
+!ErrorDetectionClip.h
+!ErrorDetectionClip.cpp
