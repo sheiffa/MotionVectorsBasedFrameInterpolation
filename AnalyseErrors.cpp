@@ -1,7 +1,7 @@
 #include "AnalyseErrors.h"
 
 
-AnalyseErrors::AnalyseErrors(PClip source, int fpsDivisor,int fps,IScriptEnvironment* env) :
+AnalyseErrors::AnalyseErrors(PClip source, bool isAnalysingBackward, int fpsDivisor,int fps,IScriptEnvironment* env) :
 	GenericVideoFilter(source),
 	fpsDivisor(2), //prototype
 	fps(fps)
@@ -32,7 +32,9 @@ AnalyseErrors::AnalyseErrors(PClip source, int fpsDivisor,int fps,IScriptEnviron
 
 	errorDetectionClipVectors=new MVAnalyse(
 		PClip(new ErrorDetectionClip(source,interpolatedClips[0],interpolatedClips[1],env)),
-		8,8,0,4,2,0,true,0,true,1,1200,1,true,50,50,0,0,0,"",0,0,0,10000,24,true,true,false,false,env);
+		8,8,0,4,2,0,
+		isAnalysingBackward,
+		0,true,1,1200,1,true,50,50,0,0,0,"",0,0,0,10000,24,true,true,false,false,env);
 }
 
 

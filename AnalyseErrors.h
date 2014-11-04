@@ -17,7 +17,7 @@ private:
     MVAnalyse* errorDetectionClipVectors;
 
 public:
-	AnalyseErrors(PClip source, int fpsDivisor,int fps,IScriptEnvironment* env);
+	AnalyseErrors(PClip source, bool isAnalysingBackward, int fpsDivisor,int fps,IScriptEnvironment* env);
 	~AnalyseErrors();
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 };
