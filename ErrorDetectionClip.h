@@ -6,7 +6,7 @@ private:
 	PClip interpolated1;
 	PClip interpolated2;
 public:
-	ErrorDetectionClip(PClip, PClip, PClip, IScriptEnvironment*);
+	ErrorDetectionClip(PClip source, PClip interpolated1, PClip interpolated2, IScriptEnvironment* env);
 	~ErrorDetectionClip();
-	PVideoFrame __stdcall GetFrame(int, IScriptEnvironment*);
+	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 }; 

@@ -7,8 +7,8 @@ private:
 	int divisor;
 	int offset;
 public:
-	DivideFps(PClip,int,int,IScriptEnvironment*);
+	DivideFps(PClip source, int divisor, int offset, IScriptEnvironment* env);
 	~DivideFps();
-	PVideoFrame __stdcall GetFrame(int, IScriptEnvironment*);
+	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 };
 
