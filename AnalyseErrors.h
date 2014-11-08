@@ -11,9 +11,12 @@ private:
 	int fpsDivisor;
     int fps;
 	DivideFps** loweredFpsClips;
+	MVSuper** loweredFpsSuperClips;
     MVAnalyse** loweredFpsClipsForwardVectors;
 	MVAnalyse** loweredFpsClipsBackwardVectors;
     MVBlockFps** interpolatedClips;
+	ErrorDetectionClip* errorDetectionClip;
+	MVSuper* errorDetectionSuperClip;
     MVAnalyse* errorDetectionClipVectors;
 
 public:

@@ -1,6 +1,6 @@
 #include "MVInterface.h"
 
-class ErrorDetectionClip : public GenericVideoFilter, public MVFilter{
+class ErrorDetectionClip : public GenericVideoFilter{
 private:
 	PClip source;
 	PClip interpolated1;

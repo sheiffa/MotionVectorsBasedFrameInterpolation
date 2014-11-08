@@ -2,7 +2,6 @@
 
 ErrorDetectionClip::ErrorDetectionClip(PClip source, PClip interpolated1, PClip interpolated2, IScriptEnvironment* env) :
 	GenericVideoFilter(source),
-	MVFilter(source,"ErroDetectionClip",env),
 	source(source),
 	interpolated1(interpolated1),
 	interpolated2(interpolated2)
