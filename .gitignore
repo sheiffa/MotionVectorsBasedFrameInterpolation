@@ -10,3 +10,5 @@
 !DivideFps.cpp
 !ErrorDetectionClip.h
 !ErrorDetectionClip.cpp
+!BlockFpsWithCorrectionVectors.h
+!BlockFpsWithCorrectionVectors.cpp
