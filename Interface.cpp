@@ -769,7 +769,9 @@ AVSValue __cdecl Create_BlockFpsWithCorrectionVectors(AVSValue args, void* user_
 		args[0].AsClip(),
 		args[1].AsClip(),
 		args[2].AsClip(),
-		args[3].AsInt(2),
+		args[3].AsClip(),
+		args[4].AsClip(),
+		args[5].AsInt(2),
 		env);
 }
 
@@ -808,6 +810,6 @@ AvisynthPluginInit2(IScriptEnvironment* env) {
 	env->AddFunction("MSuper", "c[hpad]i[vpad]i[pel]i[levels]i[chroma]b[sharp]i[rfilter]i[pelclip]c[isse]b[planar]b", Create_MVSuper, 0);
 //	env->AddFunction("MVFinest", "c[isse]b", Create_MVFinest, 0);
 	env->AddFunction("AnalyseErrors", "c[fpsDivisor]i[fps]i", Create_AnalyseErrors, 0);
-	env->AddFunction("BlockFpsWithCorrectionVectors", "c[superClip]c[errorVectors]c[fpsMultiplier]i", Create_BlockFpsWithCorrectionVectors, 0);
+	env->AddFunction("BlockFpsWithCorrectionVectors", "c[superClip]c[backwardVectors]c[forwardVectors]c[errorVectors]c[fpsMultiplier]i", Create_BlockFpsWithCorrectionVectors, 0);
 	return("MVTools : set of tools based on a motion estimation engine");
 }

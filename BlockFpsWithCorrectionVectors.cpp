@@ -1,8 +1,10 @@
 #include "BlockFpsWithCorrectionVectors.h"
 
 
-BlockFpsWithCorrectionVectors::BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip errorVectors, int fpsMultiplier,IScriptEnvironment* env) :
+BlockFpsWithCorrectionVectors::BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, PClip errorVectors, int fpsMultiplier,IScriptEnvironment* env) :
 	GenericVideoFilter(source),
+	backwardVectors(backwardVectors),
+	forwardVectors(forwardVectors),
 	errorVectors(errorVectors),
 	fpsMultiplier(fpsMultiplier)
 {
