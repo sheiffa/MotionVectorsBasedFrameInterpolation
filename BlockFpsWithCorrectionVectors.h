@@ -8,11 +8,11 @@
 class BlockFpsWithCorrectionVectors : public GenericVideoFilter, MVFilter
 {
 private:
-	int fpsMultiplier;
+	PClip super;
 	PClip errorVectors;
 	MVClip forwardVectors;
 	MVClip backwardVectors;
-
+	int fpsMultiplier;
 
 	//fps data
 	unsigned int numerator;
@@ -61,8 +61,12 @@ public:
 
 	//functionality from BlockFps constructor
 	void setOutputFps(int fpsMultiplier);
-	void getParamsFromSuperclip(PClip super, IScriptEnvironment* env);
+	void getParamsFromSuperclip(IScriptEnvironment* env);
 	void setCopyFunctions();
+
+	void ResultBlock(BYTE *pDst, int dst_pitch, const BYTE * pMCB, int MCB_pitch, const BYTE * pMCF, int MCF_pitch,
+		const BYTE * pRef, int ref_pitch, const BYTE * pSrc, int src_pitch, BYTE *maskB, int mask_pitch, BYTE *maskF,
+		BYTE *pOcc, int nBlkSizeX, int nBlkSizeY, int time256, int mode);
 
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 };
