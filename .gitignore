@@ -12,5 +12,4 @@
 !ErrorDetectionClip.cpp
 !BlockFpsWithCorrectionVectors.h
 !BlockFpsWithCorrectionVectors.cpp
-!test/basicTest.avs
-!*/
+!test/*

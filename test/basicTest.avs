@@ -2,10 +2,7 @@ LoadPlugin("c:\Workspace\inz\dev\Debug\mvtools2debug.dll")
 source=DirectShowSource("C:\Workspace\inz\samples\water.mov",fps=50, audio=false)
 super = MSuper(source)
 
-backward_vec = MAnalyse(super, overlap=4, isb = true, search=3)
-# Use block overlap, halfpixel accuracy and Exhaustive search
-forward_vec = MAnalyse(super, overlap=4, isb = false, search=3)
+backward_vec = MAnalyse(super, chroma=false, isb=true, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
+forward_vec = MAnalyse(super, chroma=false, isb=false, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
 
-errors=AnalyseErrors(source)
-
-BlockFpsWithCorrectionVectors(source, super, backward_vec, forward_vec, errors, 2)
+BlockFpsWithCorrectionVectors(source, super, backward_vec, forward_vec, source, 2)
