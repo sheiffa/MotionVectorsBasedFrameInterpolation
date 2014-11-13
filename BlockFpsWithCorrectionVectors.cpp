@@ -323,6 +323,15 @@ void BlockFpsWithCorrectionVectors::extractYUYFrame(PVideoFrame frame, const BYT
 	pitches[2] = VPITCH(frame);
 }
 
+void BlockFpsWithCorrectionVectors::extractYUYFrame(PVideoFrame frame, BYTE* channels[], int pitches[]){
+	channels[0] = YWPLAN(frame);
+	channels[1] = UWPLAN(frame);
+	channels[2] = VWPLAN(frame);
+	pitches[0] = YPITCH(frame);
+	pitches[1] = UPITCH(frame);
+	pitches[2] = VPITCH(frame);
+}
+
 void BlockFpsWithCorrectionVectors::extractYUY2Frame(PVideoFrame frame, const BYTE* channels[], int pitches[]){
 	channels[0] = frame->GetReadPtr();
     channels[1] = channels[0] + frame->GetRowSize()/2;
@@ -330,6 +339,15 @@ void BlockFpsWithCorrectionVectors::extractYUY2Frame(PVideoFrame frame, const BY
     pitches[0] = frame->GetPitch();
 	pitches[1] = pitches[0];
     pitches[2] = pitches[0];
+}
+
+void BlockFpsWithCorrectionVectors::extractYUY2Frame(PVideoFrame frame, BYTE* channels[], int pitches[]){
+	channels[0] = DstPlanes->GetPtr();
+	channels[1] = DstPlanes->GetPtrU();
+	channels[2] = DstPlanes->GetPtrV();
+	pitches[0]  = DstPlanes->GetPitch();
+	pitches[1]  = DstPlanes->GetPitchUV();
+	pitches[2]  = DstPlanes->GetPitchUV();
 }
 
 
@@ -388,20 +406,14 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
 			extractYUY2Frame(src,pSrc,nSrcPitches);
 			extractYUY2Frame(ref,pRef,nRefPitches);
 
-			//dst frame needs special extracting
 			pDstYUY2 = dst->GetWritePtr();
 			nDstPitchYUY2 = dst->GetPitch();
-			pDst[0] = DstPlanes->GetPtr();
-			pDst[1] = DstPlanes->GetPtrU();
-			pDst[2] = DstPlanes->GetPtrV();
-			nDstPitches[0]  = DstPlanes->GetPitch();
-			nDstPitches[1]  = DstPlanes->GetPitchUV();
-			nDstPitches[2]  = DstPlanes->GetPitchUV();
+			extractYUY2Frame(dst,pDst,nDstPitches);
 			
 		}
 		else
 		{
-			extractYUYFrame(dst,pDst,nDstPitches); //possible error due to const modifier?
+			extractYUYFrame(dst,pDst,nDstPitches);
 			extractYUYFrame(ref,pRef,nRefPitches);
 			extractYUYFrame(src,pSrc,nSrcPitches);
 		}
@@ -519,24 +531,24 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
                 if (nSuperModeYUV & UPLANE) Blend(pDst[1], pSrc[1], pRef[1], nBlkSizeY /yRatioUV, nWidthUV-(nBlkSizeX>>1)*nBlkX, nDstPitches[1], nSrcPitches[1], nRefPitches[1], time256, true);
                 if (nSuperModeYUV & VPLANE) Blend(pDst[2], pSrc[2], pRef[2], nBlkSizeY /yRatioUV, nWidthUV-(nBlkSizeX>>1)*nBlkX, nDstPitches[2], nSrcPitches[2], nRefPitches[2], time256, true);
 
-              pDst[0] += nBlkSizeY * nDstPitches[0] - nBlkSizeX*nBlkX;
-               pDst[1] += ( nBlkSizeY /yRatioUV ) * nDstPitches[1] - (nBlkSizeX>>1)*nBlkX;
-               pDst[2] += ( nBlkSizeY /yRatioUV ) * nDstPitches[2] - (nBlkSizeX>>1)*nBlkX;
-               pRef[0] += nBlkSizeY * nRefPitches[0] - nBlkSizeX*nBlkX;
-               pRef[1] += ( nBlkSizeY /yRatioUV ) * nRefPitches[1] - (nBlkSizeX>>1)*nBlkX;
-               pRef[2] += ( nBlkSizeY /yRatioUV ) * nRefPitches[2] - (nBlkSizeX>>1)*nBlkX;
-               pSrc[0] += nBlkSizeY * nSrcPitches[0] - nBlkSizeX*nBlkX;
-               pSrc[1] += ( nBlkSizeY /yRatioUV ) * nSrcPitches[1] - (nBlkSizeX>>1)*nBlkX;
-               pSrc[2] += ( nBlkSizeY /yRatioUV ) * nSrcPitches[2] - (nBlkSizeX>>1)*nBlkX;
-               pMaskFullYB += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
-               pMaskFullUVB += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
-               pMaskFullYF += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
-               pMaskFullUVF += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
-               pMaskOccY += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
-               pMaskOccUV += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
+				pDst[0] += nBlkSizeY * nDstPitches[0] - nBlkSizeX*nBlkX;
+				pDst[1] += ( nBlkSizeY /yRatioUV ) * nDstPitches[1] - (nBlkSizeX>>1)*nBlkX;
+				pDst[2] += ( nBlkSizeY /yRatioUV ) * nDstPitches[2] - (nBlkSizeX>>1)*nBlkX;
+				pRef[0] += nBlkSizeY * nRefPitches[0] - nBlkSizeX*nBlkX;
+				pRef[1] += ( nBlkSizeY /yRatioUV ) * nRefPitches[1] - (nBlkSizeX>>1)*nBlkX;
+				pRef[2] += ( nBlkSizeY /yRatioUV ) * nRefPitches[2] - (nBlkSizeX>>1)*nBlkX;
+				pSrc[0] += nBlkSizeY * nSrcPitches[0] - nBlkSizeX*nBlkX;
+				pSrc[1] += ( nBlkSizeY /yRatioUV ) * nSrcPitches[1] - (nBlkSizeX>>1)*nBlkX;
+				pSrc[2] += ( nBlkSizeY /yRatioUV ) * nSrcPitches[2] - (nBlkSizeX>>1)*nBlkX;
+				pMaskFullYB += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
+				pMaskFullUVB += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
+				pMaskFullYF += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
+				pMaskFullUVF += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
+				pMaskOccY += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
+				pMaskOccUV += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
             }
         }
-       // blend rest bottom with time weight
+		// blend rest bottom with time weight
         Blend(pDst[0], pSrc[0], pRef[0], nHeight-nBlkSizeY*nBlkY, nWidth, nDstPitches[0], nSrcPitches[0], nRefPitches[0], time256, true);
         
 		if (nSuperModeYUV & UPLANE)
