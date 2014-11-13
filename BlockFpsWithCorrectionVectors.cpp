@@ -313,6 +313,27 @@ void BlockFpsWithCorrectionVectors::ResultBlock(BYTE *pDst, int dst_pitch, const
 }
 
 
+
+void BlockFpsWithCorrectionVectors::extractYUYFrame(PVideoFrame frame, const BYTE* channels[], int pitches[]){
+	channels[0] = YWPLAN(frame);
+	channels[1] = UWPLAN(frame);
+	channels[2] = VWPLAN(frame);
+	pitches[0] = YPITCH(frame);
+	pitches[1] = UPITCH(frame);
+	pitches[2] = VPITCH(frame);
+}
+
+void BlockFpsWithCorrectionVectors::extractYUY2Frame(PVideoFrame frame, const BYTE* channels[], int pitches[]){
+	channels[0] = frame->GetReadPtr();
+    channels[1] = channels[0] + frame->GetRowSize()/2;
+    channels[2] = channels[1] + frame->GetRowSize()/4;
+    pitches[0] = frame->GetPitch();
+	pitches[1] = pitches[0];
+    pitches[2] = pitches[0];
+}
+
+
+
 PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvironment* env){
 	int nHeightUV = nHeight/yRatioUV;
 	int nWidthUV = nWidth/2;
@@ -321,20 +342,12 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
  	int nleft = (int) ( __int64(n)* fa/fb );
 	int time256 = int( (double(n)*double(fa)/double(fb) - nleft)*256 + 0.5);
 
-	BYTE *pDst[3];
-	const BYTE *pRef[3], *pSrc[3];
-    int nDstPitches[3], nRefPitches[3], nSrcPitches[3];
-	unsigned char *pDstYUY2;
-	int nDstPitchYUY2;
-	
-
 	int off = backwardVectors.GetDeltaFrame(); // integer offset of reference frame
-	// usually off must be = 1
+	//usually off must be = 1
 	if (off > 1)
 		time256 = time256/off;
 
 	int nright = nleft+off;
-
 
 	//check if first or last frame
 	if (time256 ==0)
@@ -352,32 +365,30 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
 	backwardVectors.Update(mvB, env);// backward from next to current
 	mvB = 0;
 
+	//save source and reference frames
 	PVideoFrame	src	= super->GetFrame(nleft, env);
 	PVideoFrame ref = super->GetFrame(nright, env);//  ref for backward compensation
 
 	//create output frame
 	PVideoFrame dst = env->NewVideoFrame(vi);
 
-   if ( backwardVectors.IsUsable() && forwardVectors.IsUsable() )
-   {
+
+	BYTE *pDst[3];
+	const BYTE *pRef[3], *pSrc[3];
+    int nDstPitches[3], nRefPitches[3], nSrcPitches[3];
+	unsigned char *pDstYUY2;
+	int nDstPitchYUY2;
+	if ( backwardVectors.IsUsable() && forwardVectors.IsUsable() )
+	{
 		PROFILE_START(MOTION_PROFILE_YUY2CONVERT);
 
+		//extract YUY/YUY2 data from frame
 		if ( (pixelType & VideoInfo::CS_YUY2) == VideoInfo::CS_YUY2 )
 		{
-            pSrc[0] = src->GetReadPtr();
-            pSrc[1] = pSrc[0] + src->GetRowSize()/2;
-            pSrc[2] = pSrc[1] + src->GetRowSize()/4;
-            nSrcPitches[0] = src->GetPitch();
-            nSrcPitches[1] = nSrcPitches[0];
-            nSrcPitches[2] = nSrcPitches[0];
+			extractYUY2Frame(src,pSrc,nSrcPitches);
+			extractYUY2Frame(ref,pRef,nRefPitches);
 
-            pRef[0] = ref->GetReadPtr();
-            pRef[1] = pRef[0] + ref->GetRowSize()/2;
-            pRef[2] = pRef[1] + ref->GetRowSize()/4;
-            nRefPitches[0] = ref->GetPitch();
-            nRefPitches[1] = nRefPitches[0];
-            nRefPitches[2] = nRefPitches[0];
-
+			//dst frame needs special extracting
 			pDstYUY2 = dst->GetWritePtr();
 			nDstPitchYUY2 = dst->GetPitch();
 			pDst[0] = DstPlanes->GetPtr();
@@ -390,26 +401,9 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
 		}
 		else
 		{
-         pDst[0] = YWPLAN(dst);
-         pDst[1] = UWPLAN(dst);
-         pDst[2] = VWPLAN(dst);
-         nDstPitches[0] = YPITCH(dst);
-         nDstPitches[1] = UPITCH(dst);
-         nDstPitches[2] = VPITCH(dst);
-
-         pRef[0] = YRPLAN(ref);
-         pRef[1] = URPLAN(ref);
-         pRef[2] = VRPLAN(ref);
-         nRefPitches[0] = YPITCH(ref);
-         nRefPitches[1] = UPITCH(ref);
-         nRefPitches[2] = VPITCH(ref);
-
-         pSrc[0] = YRPLAN(src);
-         pSrc[1] = URPLAN(src);
-         pSrc[2] = VRPLAN(src);
-         nSrcPitches[0] = YPITCH(src);
-         nSrcPitches[1] = UPITCH(src);
-         nSrcPitches[2] = VPITCH(src);
+			extractYUYFrame(dst,pDst,nDstPitches); //possible error due to const modifier?
+			extractYUYFrame(ref,pRef,nRefPitches);
+			extractYUYFrame(src,pSrc,nSrcPitches);
 		}
 		PROFILE_STOP(MOTION_PROFILE_YUY2CONVERT);
 
@@ -435,31 +429,31 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
         PROFILE_START(MOTION_PROFILE_COMPENSATION);
 		int blocks = backwardVectors.GetBlkCount();
 
-		 int maxoffset = nPitchY*(nHeightP-nBlkSizeY)-nBlkSizeX;
+		int maxoffset = nPitchY*(nHeightP-nBlkSizeY)-nBlkSizeX;
 
 		// pointers
-		 BYTE * pMaskFullYB = MaskFullYB;
-		 BYTE * pMaskFullYF = MaskFullYF;
-		 BYTE * pMaskFullUVB = MaskFullUVB;
-		 BYTE * pMaskFullUVF = MaskFullUVF;
-		 BYTE * pMaskOccY = MaskOccY;
-		 BYTE * pMaskOccUV = MaskOccUV;
+		BYTE * pMaskFullYB = MaskFullYB;
+		BYTE * pMaskFullYF = MaskFullYF;
+		BYTE * pMaskFullUVB = MaskFullUVB;
+		BYTE * pMaskFullUVF = MaskFullUVF;
+		BYTE * pMaskOccY = MaskOccY;
+		BYTE * pMaskOccUV = MaskOccUV;
 
-		 BYTE *pDstSave[3];
-		 pDstSave[0] = pDst[0];
-		 pDstSave[1] = pDst[1];
-		 pDstSave[2] = pDst[2];
+		BYTE *pDstSave[3];
+		pDstSave[0] = pDst[0];
+		pDstSave[1] = pDst[1];
+		pDstSave[2] = pDst[2];
 
-		 pSrc[0] += nSuperHPad + nSrcPitches[0]*nSuperVPad; // add offset source in super
-		 pSrc[1] += (nSuperHPad>>1) + nSrcPitches[1]*(nSuperVPad>>1);
-		 pSrc[2] += (nSuperHPad>>1) + nSrcPitches[2]*(nSuperVPad>>1);
-		 pRef[0] += nSuperHPad + nRefPitches[0]*nSuperVPad;
-		 pRef[1] += (nSuperHPad>>1) + nRefPitches[1]*(nSuperVPad>>1);
-		 pRef[2] += (nSuperHPad>>1) + nRefPitches[2]*(nSuperVPad>>1);
+		pSrc[0] += nSuperHPad + nSrcPitches[0]*nSuperVPad; // add offset source in super
+		pSrc[1] += (nSuperHPad>>1) + nSrcPitches[1]*(nSuperVPad>>1);
+		pSrc[2] += (nSuperHPad>>1) + nSrcPitches[2]*(nSuperVPad>>1);
+		pRef[0] += nSuperHPad + nRefPitches[0]*nSuperVPad;
+		pRef[1] += (nSuperHPad>>1) + nRefPitches[1]*(nSuperVPad>>1);
+		pRef[2] += (nSuperHPad>>1) + nRefPitches[2]*(nSuperVPad>>1);
 
-		 // fetch image blocks
-         for ( int i = 0; i < blocks; i++ )
-         {
+		// fetch image blocks
+        for ( int i = 0; i < blocks; i++ )
+        {
             const FakeBlockData &blockB = backwardVectors.GetBlock(0, i);
             const FakeBlockData &blockF = forwardVectors.GetBlock(0, i);
 
@@ -475,27 +469,29 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
 			   pMaskFullYF, pMaskOccY,
 			   nBlkSizeX, nBlkSizeY, time256, 0);
 			// chroma u
-            if (nSuperModeYUV & UPLANE) ResultBlock(pDst[1], nDstPitches[1],
-               pPlanesB[1]->GetPointer((blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8))>>1, (blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8))/yRatioUV),
-               pPlanesB[1]->GetPitch(),
-               pPlanesF[1]->GetPointer((blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8))>>1, (blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8))/yRatioUV),
-               pPlanesF[1]->GetPitch(),
-			   pRef[1], nRefPitches[1],
-			   pSrc[1], nSrcPitches[1],
-			   pMaskFullUVB, nPitchUV,
-			   pMaskFullUVF, pMaskOccUV,
-			   nBlkSizeX>>1, nBlkSizeY/yRatioUV, time256, 0);
+            if (nSuperModeYUV & UPLANE)
+				ResultBlock(pDst[1], nDstPitches[1],
+				pPlanesB[1]->GetPointer((blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8))>>1, (blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8))/yRatioUV),
+				pPlanesB[1]->GetPitch(),
+				pPlanesF[1]->GetPointer((blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8))>>1, (blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8))/yRatioUV),
+				pPlanesF[1]->GetPitch(),
+				pRef[1], nRefPitches[1],
+				pSrc[1], nSrcPitches[1],
+				pMaskFullUVB, nPitchUV,
+				pMaskFullUVF, pMaskOccUV,
+				nBlkSizeX>>1, nBlkSizeY/yRatioUV, time256, 0);
 			// chroma v
-            if (nSuperModeYUV & VPLANE) ResultBlock(pDst[2], nDstPitches[2],
-               pPlanesB[2]->GetPointer((blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8))>>1, (blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8))/yRatioUV),
-               pPlanesB[2]->GetPitch(),
-               pPlanesF[2]->GetPointer((blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8))>>1, (blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8))/yRatioUV),
-               pPlanesF[2]->GetPitch(),
-			   pRef[2], nRefPitches[2],
-			   pSrc[2], nSrcPitches[2],
-			   pMaskFullUVB, nPitchUV,
-			   pMaskFullUVF, pMaskOccUV,
-			   nBlkSizeX>>1, nBlkSizeY/yRatioUV, time256, 0);
+            if (nSuperModeYUV & VPLANE)
+				ResultBlock(pDst[2], nDstPitches[2],
+				pPlanesB[2]->GetPointer((blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8))>>1, (blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8))/yRatioUV),
+				pPlanesB[2]->GetPitch(),
+				pPlanesF[2]->GetPointer((blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8))>>1, (blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8))/yRatioUV),
+				pPlanesF[2]->GetPitch(),
+				pRef[2], nRefPitches[2],
+				pSrc[2], nSrcPitches[2],
+				pMaskFullUVB, nPitchUV,
+				pMaskFullUVF, pMaskOccUV,
+				nBlkSizeX>>1, nBlkSizeY/yRatioUV, time256, 0);
 
 
             // update pDsts
@@ -539,30 +535,36 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
                pMaskOccY += nBlkSizeY * nPitchY - nBlkSizeX*nBlkX;
                pMaskOccUV += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
             }
-         }
+        }
        // blend rest bottom with time weight
         Blend(pDst[0], pSrc[0], pRef[0], nHeight-nBlkSizeY*nBlkY, nWidth, nDstPitches[0], nSrcPitches[0], nRefPitches[0], time256, true);
-        if (nSuperModeYUV & UPLANE) Blend(pDst[1], pSrc[1], pRef[1], nHeightUV-(nBlkSizeY /yRatioUV)*nBlkY, nWidthUV, nDstPitches[1], nSrcPitches[1], nRefPitches[1], time256, true);
-        if (nSuperModeYUV & VPLANE) Blend(pDst[2], pSrc[2], pRef[2], nHeightUV-(nBlkSizeY /yRatioUV)*nBlkY, nWidthUV, nDstPitches[2], nSrcPitches[2], nRefPitches[2], time256, true);
-         PROFILE_STOP(MOTION_PROFILE_COMPENSATION);
+        
+		if (nSuperModeYUV & UPLANE)
+			Blend(pDst[1], pSrc[1], pRef[1], nHeightUV-(nBlkSizeY /yRatioUV)*nBlkY, nWidthUV, nDstPitches[1], nSrcPitches[1], nRefPitches[1], time256, true);
+        
+		if (nSuperModeYUV & VPLANE)
+			Blend(pDst[2], pSrc[2], pRef[2], nHeightUV-(nBlkSizeY /yRatioUV)*nBlkY, nWidthUV, nDstPitches[2], nSrcPitches[2], nRefPitches[2], time256, true);
+        
+		PROFILE_STOP(MOTION_PROFILE_COMPENSATION);
 
-      PROFILE_START(MOTION_PROFILE_YUY2CONVERT);
+		PROFILE_START(MOTION_PROFILE_YUY2CONVERT);
+
 		if ( (pixelType & VideoInfo::CS_YUY2) == VideoInfo::CS_YUY2)
-		{
 			YUY2FromPlanes(pDstYUY2, nDstPitchYUY2, nWidth, nHeight,
 								  pDstSave[0], nDstPitches[0], pDstSave[1], pDstSave[2], nDstPitches[1], true);
-		}
-      PROFILE_STOP(MOTION_PROFILE_YUY2CONVERT);
+		
+		PROFILE_STOP(MOTION_PROFILE_YUY2CONVERT);
 
 		return dst;
    }
+
    else // bad
    {
-       PVideoFrame src = child->GetFrame(nleft,env); // it is easy to use child here - v2.0
+		PVideoFrame src = child->GetFrame(nleft,env); // it is easy to use child here - v2.0
 		
 	   //let's blend src with ref frames like ConvertFPS
         PVideoFrame ref = child->GetFrame(nright,env);
-      PROFILE_START(MOTION_PROFILE_FLOWINTER);
+		PROFILE_START(MOTION_PROFILE_FLOWINTER);
         if ( (pixelType & VideoInfo::CS_YUY2) == VideoInfo::CS_YUY2 )
 		{
 			pSrc[0] = src->GetReadPtr(); // we can blend YUY2
@@ -573,35 +575,25 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
 			nDstPitchYUY2 = dst->GetPitch();
 			Blend(pDstYUY2, pSrc[0], pRef[0], nHeight, nWidth*2, nDstPitchYUY2, nSrcPitches[0], nRefPitches[0], time256, true);
 		}
+
 		else
 		{
-         pDst[0] = YWPLAN(dst);
-         pDst[1] = UWPLAN(dst);
-         pDst[2] = VWPLAN(dst);
-         nDstPitches[0] = YPITCH(dst);
-         nDstPitches[1] = UPITCH(dst);
-         nDstPitches[2] = VPITCH(dst);
-
-         pRef[0] = YRPLAN(ref);
-         pRef[1] = URPLAN(ref);
-         pRef[2] = VRPLAN(ref);
-         nRefPitches[0] = YPITCH(ref);
-         nRefPitches[1] = UPITCH(ref);
-         nRefPitches[2] = VPITCH(ref);
-
-         pSrc[0] = YRPLAN(src);
-         pSrc[1] = URPLAN(src);
-         pSrc[2] = VRPLAN(src);
-         nSrcPitches[0] = YPITCH(src);
-         nSrcPitches[1] = UPITCH(src);
-         nSrcPitches[2] = VPITCH(src);
-       // blend with time weight
-        Blend(pDst[0], pSrc[0], pRef[0], nHeight, nWidth, nDstPitches[0], nSrcPitches[0], nRefPitches[0], time256, true);
-		if (nSuperModeYUV & UPLANE) Blend(pDst[1], pSrc[1], pRef[1], nHeightUV, nWidthUV, nDstPitches[1], nSrcPitches[1], nRefPitches[1], time256, true);
-		if (nSuperModeYUV & VPLANE) Blend(pDst[2], pSrc[2], pRef[2], nHeightUV, nWidthUV, nDstPitches[2], nSrcPitches[2], nRefPitches[2], time256, true);
+			extractYUYFrame(dst,pDst,nDstPitches);
+			extractYUYFrame(ref,pRef,nRefPitches);
+			extractYUYFrame(src,pSrc,nSrcPitches);
+		
+			// blend with time weight
+			Blend(pDst[0], pSrc[0], pRef[0], nHeight, nWidth, nDstPitches[0], nSrcPitches[0], nRefPitches[0], time256, true);
+		
+			if (nSuperModeYUV & UPLANE)
+				Blend(pDst[1], pSrc[1], pRef[1], nHeightUV, nWidthUV, nDstPitches[1], nSrcPitches[1], nRefPitches[1], time256, true);
+		
+			if (nSuperModeYUV & VPLANE)
+				Blend(pDst[2], pSrc[2], pRef[2], nHeightUV, nWidthUV, nDstPitches[2], nSrcPitches[2], nRefPitches[2], time256, true);
 		}
-     PROFILE_STOP(MOTION_PROFILE_FLOWINTER);
 
- 	   return dst;
+		PROFILE_STOP(MOTION_PROFILE_FLOWINTER);
+
+ 		return dst;
    }
 }

@@ -55,10 +55,6 @@ private:
 
 	YUY2Planes * DstPlanes;
 
-public:
-	BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, PClip errorVectors, int fpsMultiplier, IScriptEnvironment* env);
-	~BlockFpsWithCorrectionVectors();
-
 	//functionality from BlockFps constructor
 	void setOutputFps(int fpsMultiplier);
 	void getParamsFromSuperclip(IScriptEnvironment* env);
@@ -67,6 +63,14 @@ public:
 	void ResultBlock(BYTE *pDst, int dst_pitch, const BYTE * pMCB, int MCB_pitch, const BYTE * pMCF, int MCF_pitch,
 		const BYTE * pRef, int ref_pitch, const BYTE * pSrc, int src_pitch, BYTE *maskB, int mask_pitch, BYTE *maskF,
 		BYTE *pOcc, int nBlkSizeX, int nBlkSizeY, int time256, int mode);
+
+	//functionality from MVBlockFps::GetFrame
+	void extractYUYFrame(PVideoFrame frame, const BYTE* channels[], int pitches[]);
+	void extractYUY2Frame(PVideoFrame frame, const BYTE* channels[], int pitches[]);
+
+public:
+	BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, PClip errorVectors, int fpsMultiplier, IScriptEnvironment* env);
+	~BlockFpsWithCorrectionVectors();
 
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 };
