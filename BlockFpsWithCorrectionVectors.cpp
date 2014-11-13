@@ -11,10 +11,10 @@ BlockFpsWithCorrectionVectors::BlockFpsWithCorrectionVectors(PClip source, PClip
 	fpsMultiplier(fpsMultiplier)
 {
 	if (!vi.IsYV12() && !vi.IsYUY2())
-		env->ThrowError("MBlockFps: Clip must be YV12 or YUY2");
+		env->ThrowError("BlockFpsWithCorrectionVectors: Clip must be YV12 or YUY2");
 
     if (nOverlapX!=0 || nOverlapX!=0)
-		env->ThrowError("MBlockFps: Overlap must be 0");
+		env->ThrowError("BlockFpsWithCorrectionVectors: Overlap must be 0");
 
 	setOutputFps(fpsMultiplier);
 
