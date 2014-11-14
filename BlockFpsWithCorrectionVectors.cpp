@@ -396,13 +396,11 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
     int nDstPitches[3], nRefPitches[3], nSrcPitches[3];
 	unsigned char *pDstYUY2;
 	int nDstPitchYUY2;
-	if ( backwardVectors.IsUsable() && forwardVectors.IsUsable() )
-	{
+	if ( backwardVectors.IsUsable() && forwardVectors.IsUsable() ){
 		PROFILE_START(MOTION_PROFILE_YUY2CONVERT);
 
 		//extract YUY/YUY2 data from frame
-		if ( (pixelType & VideoInfo::CS_YUY2) == VideoInfo::CS_YUY2 )
-		{
+		if ( (pixelType & VideoInfo::CS_YUY2) == VideoInfo::CS_YUY2 ){
 			extractYUY2Frame(src,pSrc,nSrcPitches);
 			extractYUY2Frame(ref,pRef,nRefPitches);
 
@@ -411,12 +409,13 @@ PVideoFrame __stdcall BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvi
 			extractYUY2Frame(dst,pDst,nDstPitches);
 			
 		}
-		else
-		{
+		
+		else{
 			extractYUYFrame(dst,pDst,nDstPitches);
 			extractYUYFrame(ref,pRef,nRefPitches);
 			extractYUYFrame(src,pSrc,nSrcPitches);
 		}
+		
 		PROFILE_STOP(MOTION_PROFILE_YUY2CONVERT);
 
 		pRefBGOF->Update(YUVPLANES, (BYTE*)pRef[0], nRefPitches[0], (BYTE*)pRef[1], nRefPitches[1], (BYTE*)pRef[2], nRefPitches[2]);// v2.0
