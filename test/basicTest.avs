@@ -5,4 +5,4 @@ super = MSuper(source)
 backward_vec = MAnalyse(super, chroma=false, isb=true, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
 forward_vec = MAnalyse(super, chroma=false, isb=false, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
 
-BlockFpsWithCorrectionVectors(source, super, backward_vec, forward_vec, source, 2)
+BlockFpsWithCorrectionVectors(source, super, backward_vec, forward_vec, source, 50, 2,0)
