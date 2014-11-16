@@ -64,11 +64,6 @@ private:
 		const BYTE * pRef, int ref_pitch, const BYTE * pSrc, int src_pitch, BYTE *maskB, int mask_pitch, BYTE *maskF,
 		BYTE *pOcc, int nBlkSizeX, int nBlkSizeY, int time256, int mode);
 
-	//functionality from MVBlockFps::GetFrame
-	void extractYUYFrame(PVideoFrame frame, const BYTE* channels[], int pitches[]);
-	void extractYUYFrame(PVideoFrame frame, BYTE* channels[], int pitches[]);
-	void extractYUY2Frame(PVideoFrame frame, const BYTE* channels[], int pitches[]);
-	void extractYUY2Frame(PVideoFrame frame, BYTE* channels[], int pitches[]);
 
 public:
 	BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, PClip errorVectors, int fpsMultiplier, IScriptEnvironment* env);
