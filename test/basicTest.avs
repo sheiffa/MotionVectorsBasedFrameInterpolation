@@ -1,4 +1,4 @@
-LoadPlugin("c:\Workspace\inz\dev\Debug\mvtools2debug.dll")
+LoadPlugin("..\Debug\mvtools2debug.dll")
 DirectShowSource("C:\Workspace\inz\samples\water.mov",fps=50, audio=false)
 super = MSuper(pel=2, hpad=0, vpad=0)
 
