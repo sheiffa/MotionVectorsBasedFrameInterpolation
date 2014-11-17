@@ -1,8 +1,10 @@
 LoadPlugin("c:\Workspace\inz\dev\Debug\mvtools2debug.dll")
-source=DirectShowSource("C:\Workspace\inz\samples\water.mov",fps=50, audio=false)
-super = MSuper(source)
+DirectShowSource("C:\Workspace\inz\samples\water.mov",fps=50, audio=false)
+super = MSuper(pel=2, hpad=0, vpad=0)
 
-backward_vec = MAnalyse(super, chroma=false, isb=true, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
-forward_vec = MAnalyse(super, chroma=false, isb=false, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
+backward_1 = MAnalyse(super, chroma=false, isb=true, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
+forward_1 = MAnalyse(super, chroma=false, isb=false, blksize=16, blksizev=16, searchparam=2, plevel=0, search=3, badrange=(-24))
 
-BlockFpsWithCorrectionVectors(source, super, backward_vec, forward_vec, source, 50, 2,0)
+errors = AnalyseErrors(super, 2, 50)
+
+BlockFpsWithCorrectionVectors(super, backward_1, forward_1, errors, 50, 2,0)
