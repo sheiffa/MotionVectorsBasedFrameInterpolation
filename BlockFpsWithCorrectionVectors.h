@@ -6,7 +6,7 @@
 class BlockFpsWithCorrectionVectors : public MVBlockFps
 {
 private:
-	PClip errorVectors;
+	MVClip errorVectors;
 	int fpsMultiplier;
 
 public:

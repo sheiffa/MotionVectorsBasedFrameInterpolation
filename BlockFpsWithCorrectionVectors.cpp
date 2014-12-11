@@ -3,7 +3,7 @@
 
 BlockFpsWithCorrectionVectors::BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, PClip errorVectors, int sourceFps, int fpsMultiplier,int mode,IScriptEnvironment* env) :
 	MVBlockFps(source,super,backwardVectors,forwardVectors,sourceFps*fpsMultiplier,1,mode,0,true,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2,true,false,env),
-	errorVectors(errorVectors),
+	errorVectors(errorVectors,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2, env),
 	fpsMultiplier(fpsMultiplier)
 {
 
@@ -65,11 +65,9 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
 	mvClipB.Update(mvB, env);// backward from next to current
 	mvB = 0;
 
-
 	PVideoFrame	src	= super->GetFrame(nleft, env);
 	PVideoFrame ref = super->GetFrame(nright, env);//  ref for backward compensation
 
-//   int sharp = mvClipB.GetSharp();
 
 	dst = env->NewVideoFrame(vi);
 

@@ -56,5 +56,5 @@ AnalyseErrors::~AnalyseErrors()
 
 
 PVideoFrame __stdcall AnalyseErrors::GetFrame(int n, IScriptEnvironment* env){
-	return errorDetectionClipVectors->GetFrame(2*n,env);
+	return errorDetectionClipVectors->GetFrame(n,env);
 }
