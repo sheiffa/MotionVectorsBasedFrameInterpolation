@@ -17,9 +17,10 @@ private:
     MVBlockFps** interpolatedClips;
 	ErrorDetectionClip* errorDetectionClip;
 	MVSuper* errorDetectionSuperClip;
-    MVAnalyse* errorDetectionClipVectors;
 
 public:
+	MVAnalyse* errorDetectionClipVectors;
+
 	AnalyseErrors(PClip source, int fpsDivisor,int fps,IScriptEnvironment* env);
 	~AnalyseErrors();
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);

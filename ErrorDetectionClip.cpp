@@ -18,7 +18,7 @@ PVideoFrame __stdcall ErrorDetectionClip::GetFrame(int n, IScriptEnvironment* en
 		case(1):
 			return source->GetFrame(n/2,env);
 		case(2):	
-			return interpolated2->GetFrame(n/2+1,env);
+			return interpolated2->GetFrame(n/2,env);
 		case(3):
 			return source->GetFrame(n/2+1,env);
 	}	
