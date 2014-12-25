@@ -65,13 +65,19 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
 	mvClipB.Update(mvB, env);// backward from next to current
 	mvB = 0;
 
+	// updating Frame data for errorVectors MVClip
+	PVideoFrame mvErrorVectors = errorVectors.GetFrame(nleft, env);
+	errorVectors.Update(mvErrorVectors, env);// backward from next to current
+	mvErrorVectors = 0;
+
 	PVideoFrame	src	= super->GetFrame(nleft, env);
 	PVideoFrame ref = super->GetFrame(nright, env);//  ref for backward compensation
 
 
 	dst = env->NewVideoFrame(vi);
 
-   if ( mvClipB.IsUsable() && mvClipF.IsUsable() )
+	// added usability condition
+   if ( mvClipB.IsUsable() && mvClipF.IsUsable() && errorVectors.IsUsable())
    {
 
 //		MVFrames *pFrames = mvCore->GetFrames(nIdx);
@@ -234,14 +240,32 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
          {
             const FakeBlockData &blockB = mvClipB.GetBlock(0, i);
             const FakeBlockData &blockF = mvClipF.GetBlock(0, i);
+						
+			// obtaining block data for forward analysis only
+			const FakeBlockData &errorClipBlockLeft = errorVectors.GetBlock(0,i);
 
-			// obtaining every second block data for forward analysis
-			const FakeBlockData &errorClipBlockLeft = errorVectors.GetBlock(0,2*i);
-			int rightBlockNumber = 2*(i+1);
-			if (i+1 >= blocks) { // for now, we assume modifications after last frame use only error vectors for the last frame
-				rightBlockNumber = 2*i;
+			// updating errorVectors with the next proper frame if exists
+			mvErrorVectors = errorVectors.GetFrame(nleft+2, env);
+			errorVectors.Update(mvErrorVectors, env);
+			mvErrorVectors = 0;
+
+			// hopefully this way we can check if we are on the last frame
+			if (!errorVectors.IsUsable()) {
+				// and then just obtain first frame twice, because we don't like proper handling of the border cases
+				mvErrorVectors = errorVectors.GetFrame(nleft, env);
+				errorVectors.Update(mvErrorVectors, env);
+				mvErrorVectors = 0;
 			}
-			const FakeBlockData &errorClipBlockRight = errorVectors.GetBlock(0,rightBlockNumber);
+
+			// obtaining block data for the next frame so the thing works just as in the algorithm
+			// except for that we dont know if it works
+			// most likely not
+			const FakeBlockData &errorClipBlockRight = errorVectors.GetBlock(0,i);
+
+			// updating errorVectors with the former frame again because paranoya
+			mvErrorVectors = errorVectors.GetFrame(nleft, env);
+			errorVectors.Update(mvErrorVectors, env);
+			mvErrorVectors = 0;
 
 			// luma
             ResultBlock(pDst[0], nDstPitches[0],
@@ -326,6 +350,7 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
                pMaskOccUV += (nBlkSizeY /yRatioUV) * nPitchUV - (nBlkSizeX>>1)*nBlkX;
             }
          }
+
        // blend rest bottom with time weight
         Blend(pDst[0], pSrc[0], pRef[0], nHeight-nBlkSizeY*nBlkY, nWidth, nDstPitches[0], nSrcPitches[0], nRefPitches[0], time256, isse);
         if (nSuperModeYUV & UPLANE) Blend(pDst[1], pSrc[1], pRef[1], nHeightUV-(nBlkSizeY /yRatioUV)*nBlkY, nWidthUV, nDstPitches[1], nSrcPitches[1], nRefPitches[1], time256, isse);
