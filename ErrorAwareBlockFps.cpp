@@ -1,15 +1,50 @@
-#include "BlockFpsWithCorrectionVectors.h"
+#include "ErrorAwareBlockFps.h"
 #include "MaskFun.h"
 
-BlockFpsWithCorrectionVectors::BlockFpsWithCorrectionVectors(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, PClip errorVectors, int sourceFps, int fpsMultiplier,int mode,IScriptEnvironment* env) :
-	MVBlockFps(source,super,backwardVectors,forwardVectors,sourceFps*fpsMultiplier,1,mode,0,true,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2,true,false,env),
-	errorVectors(errorVectors,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2, env),
+ErrorAwareBlockFps::ErrorAwareBlockFps(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, int fpsDivisor, int fpsMultiplier,int mode,IScriptEnvironment* env) :
+	MVBlockFps(source,super,backwardVectors,forwardVectors,(source->GetVideoInfo().fps_numerator)*fpsMultiplier,1,mode,0,true,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2,true,false,env),
+	fpsDivisor(2), //prototype
 	fpsMultiplier(fpsMultiplier)
 {
+	sourceFps=source->GetVideoInfo().fps_numerator;
+	
+	//separate clip into number of clips specified by fpsDivisor and calculate vectors
+	DivideFps** loweredFpsClips=new DivideFps* [fpsDivisor];
+	MVSuper** loweredFpsSuperClips=new MVSuper* [fpsDivisor];
+	MVAnalyse** loweredFpsClipsForwardVectors=new MVAnalyse* [fpsDivisor];
+	MVAnalyse** loweredFpsClipsBackwardVectors=new MVAnalyse* [fpsDivisor];
 
+	for(int i=0; i<fpsDivisor; i++){
+		loweredFpsClips[i]=new DivideFps(source,sourceFps,fpsDivisor,i,env);
+		loweredFpsSuperClips[i]=new MVSuper(loweredFpsClips[i],8,8,2,0,true,2,2,0,true,false,env);
+		
+		//calculate errors using default MVAnalyse args
+		loweredFpsClipsForwardVectors[i]=new MVAnalyse(loweredFpsSuperClips[i],8,8,0,4,2,0,false,0,true,1,1200,1,true,50,50,0,0,0,"",0,0,0,10000,24,true,true,false,false,env);
+		loweredFpsClipsBackwardVectors[i]=new MVAnalyse(loweredFpsSuperClips[i],8,8,0,4,2,0,true,0,true,1,1200,1,true,50,50,0,0,0,"",0,0,0,10000,24,true,true,false,false,env);
+	}
+	
+	//interpolate separated clips to get the base fps
+	MVBlockFps** interpolatedClips=new MVBlockFps* [fpsDivisor];
+	for(int i=0; i<fpsDivisor; i++)
+		//interpolate using default MVBlockFps args
+		interpolatedClips[i]=new MVBlockFps(loweredFpsClips[i],
+										 loweredFpsSuperClips[i],
+										 loweredFpsClipsBackwardVectors[i],
+										 loweredFpsClipsForwardVectors[i],
+										 sourceFps,
+										 1,0,0,true,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2,true,false,env);
+		
+	errorDetectionClip=new ErrorDetectionClip(source,interpolatedClips[0],interpolatedClips[1],env);
+	errorDetectionSuperClip=new MVSuper(errorDetectionClip,8,8,2,0,true,2,2,0,true,false,env);
+	errorDetectionClipVectors=new MVAnalyse(
+		errorDetectionSuperClip,
+		8,8,0,4,2,0,
+		false,	//analyse forward to compare interpolated frames with original
+		0,true,1,1200,1,true,50,50,0,0,0,"",0,0,0,10000,24,true,true,false,false,env);
+	errorVectors=new MVClip(errorDetectionClipVectors,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2, env);
 }
 
-BlockFpsWithCorrectionVectors::~BlockFpsWithCorrectionVectors(){
+ErrorAwareBlockFps::~ErrorAwareBlockFps(){
 }
 
 inline BYTE MEDIAN(BYTE a, BYTE b, BYTE c)
@@ -22,7 +57,7 @@ inline BYTE MEDIAN(BYTE a, BYTE b, BYTE c)
 }
 
 
-PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnvironment* env)
+PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* env)
 {
    	 int nHeightUV = nHeight/yRatioUV;
 	 int nWidthUV = nWidth/2;
@@ -66,8 +101,8 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
 	mvB = 0;
 
 	// updating Frame data for errorVectors MVClip
-	PVideoFrame mvErrorVectors = errorVectors.GetFrame(nleft, env);
-	errorVectors.Update(mvErrorVectors, env);// backward from next to current
+	PVideoFrame mvErrorVectors = errorVectors->GetFrame(nleft, env);
+	errorVectors->Update(mvErrorVectors, env);// backward from next to current
 	mvErrorVectors = 0;
 
 	PVideoFrame	src	= super->GetFrame(nleft, env);
@@ -77,7 +112,7 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
 	dst = env->NewVideoFrame(vi);
 
 	// added usability condition
-   if ( mvClipB.IsUsable() && mvClipF.IsUsable() && errorVectors.IsUsable())
+   if ( mvClipB.IsUsable() && mvClipF.IsUsable() && errorVectors->IsUsable())
    {
 
 //		MVFrames *pFrames = mvCore->GetFrames(nIdx);
@@ -242,29 +277,29 @@ PVideoFrame __stdcall  BlockFpsWithCorrectionVectors::GetFrame(int n, IScriptEnv
             const FakeBlockData &blockF = mvClipF.GetBlock(0, i);
 						
 			// obtaining block data for forward analysis only
-			const FakeBlockData &errorClipBlockLeft = errorVectors.GetBlock(0,i);
+			const FakeBlockData &errorClipBlockLeft = errorVectors->GetBlock(0,i);
 
 			// updating errorVectors with the next proper frame if exists
-			mvErrorVectors = errorVectors.GetFrame(nleft+2, env);
-			errorVectors.Update(mvErrorVectors, env);
+			mvErrorVectors = errorVectors->GetFrame(nleft+2, env);
+			errorVectors->Update(mvErrorVectors, env);
 			mvErrorVectors = 0;
 
 			// hopefully this way we can check if we are on the last frame
-			if (!errorVectors.IsUsable()) {
+			if (!errorVectors->IsUsable()) {
 				// and then just obtain first frame twice, because we don't like proper handling of the border cases
-				mvErrorVectors = errorVectors.GetFrame(nleft, env);
-				errorVectors.Update(mvErrorVectors, env);
+				mvErrorVectors = errorVectors->GetFrame(nleft, env);
+				errorVectors->Update(mvErrorVectors, env);
 				mvErrorVectors = 0;
 			}
 
 			// obtaining block data for the next frame so the thing works just as in the algorithm
 			// except for that we dont know if it works
 			// most likely not
-			const FakeBlockData &errorClipBlockRight = errorVectors.GetBlock(0,i);
+			const FakeBlockData &errorClipBlockRight = errorVectors->GetBlock(0,i);
 
 			// updating errorVectors with the former frame again because paranoya
-			mvErrorVectors = errorVectors.GetFrame(nleft, env);
-			errorVectors.Update(mvErrorVectors, env);
+			mvErrorVectors = errorVectors->GetFrame(nleft, env);
+			errorVectors->Update(mvErrorVectors, env);
 			mvErrorVectors = 0;
 
 			// luma

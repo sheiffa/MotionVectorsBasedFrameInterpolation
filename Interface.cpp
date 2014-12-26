@@ -71,7 +71,7 @@
 #include "MVFinest.h"
 
 //Interpolation with error detection
-#include "BlockFpsWithCorrectionVectors.h"
+#include "ErrorAwareBlockFps.h"
 
 //MVCore mvCore;
 
@@ -754,26 +754,16 @@ AVSValue __cdecl Create_MVFinest(AVSValue args, void* user_data, IScriptEnvironm
 		env);
 }
 
-AVSValue __cdecl Create_AnalyseErrors(AVSValue args, void* user_data, IScriptEnvironment* env)
+AVSValue __cdecl Create_ErrorAwareBlockFps(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-	return new AnalyseErrors(
-		args[0].AsClip(),
-		args[1].AsInt(2),
-		args[2].AsInt(25),
-		env);
-}
-
-AVSValue __cdecl Create_BlockFpsWithCorrectionVectors(AVSValue args, void* user_data, IScriptEnvironment* env)
-{
-	return new BlockFpsWithCorrectionVectors(
+	return new ErrorAwareBlockFps(
 		args[0].AsClip(),
 		args[1].AsClip(),
 		args[2].AsClip(),
 		args[3].AsClip(),
-		args[4].AsClip(),
-		args[5].AsInt(25),
-		args[6].AsInt(2),
-		args[7].AsInt(0),
+		args[4].AsInt(2),
+		args[5].AsInt(2),
+		args[6].AsInt(0),
 		env);
 }
 
@@ -811,7 +801,6 @@ AvisynthPluginInit2(IScriptEnvironment* env) {
 //	env->AddFunction("MVCheckPel", "c[vectors]c[pelclip]c[idx]i[thSCD1]i[thSCD2]i[isse]b", Create_MVCheckPel, 0);
 	env->AddFunction("MSuper", "c[hpad]i[vpad]i[pel]i[levels]i[chroma]b[sharp]i[rfilter]i[pelclip]c[isse]b[planar]b", Create_MVSuper, 0);
 //	env->AddFunction("MVFinest", "c[isse]b", Create_MVFinest, 0);
-	env->AddFunction("AnalyseErrors", "c[fpsDivisor]i[fps]i", Create_AnalyseErrors, 0);
-	env->AddFunction("BlockFpsWithCorrectionVectors", "c[superClip]c[backwardVectors]c[forwardVectors]c[errorVectors]c[sourceFps]i[fpsMultiplier]i[mode]i", Create_BlockFpsWithCorrectionVectors, 0);
+	env->AddFunction("ErrorAwareBlockFps", "c[superClip]c[backwardVectors]c[forwardVectors]c[fpsDivisor]i[fpsMultiplier]i[mode]i", Create_ErrorAwareBlockFps, 0);
 	return("MVTools : set of tools based on a motion estimation engine");
 }

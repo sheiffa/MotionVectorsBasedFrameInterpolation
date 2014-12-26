@@ -12,4 +12,6 @@
 !ErrorDetectionClip.cpp
 !BlockFpsWithCorrectionVectors.h
 !BlockFpsWithCorrectionVectors.cpp
+!ErrorAwareBlockFps.h
+!ErrorAwareBlockFps.cpp
 !test/*
