@@ -1,13 +1,12 @@
 #include "MVInterface.h"
-#include "MVBlockFps.h"
 
 class ErrorDetectionClip : public GenericVideoFilter{
 private:
-	int fpsDivisor;
 	PClip source;
-	PClip* interpolatedClips;
+	PClip interpolated1;
+	PClip interpolated2;
 public:
-	ErrorDetectionClip(PClip source, int fpsDivisor, MVBlockFps** interpolatedClips, IScriptEnvironment* env);
+	ErrorDetectionClip(PClip source, PClip interpolated1, PClip interpolated2, IScriptEnvironment* env);
 	~ErrorDetectionClip();
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 }; 

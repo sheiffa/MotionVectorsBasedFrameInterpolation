@@ -34,7 +34,7 @@ ErrorAwareBlockFps::ErrorAwareBlockFps(PClip source, PClip super, PClip backward
 										 sourceFps,
 										 mode,0,0,true,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2,true,false,env);
 		
-	errorDetectionClip=new ErrorDetectionClip(source,fpsDivisor,interpolatedClips,env);
+	errorDetectionClip=new ErrorDetectionClip(source,interpolatedClips[0],interpolatedClips[1],env);
 	errorDetectionSuperClip=new MVSuper(errorDetectionClip,8,8,2,0,true,2,2,0,true,false,env);
 	errorDetectionClipVectors=new MVAnalyse(
 		errorDetectionSuperClip,
