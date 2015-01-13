@@ -270,8 +270,7 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
 		 pRef[2] += (nSuperHPad>>1) + nRefPitches[2]*(nSuperVPad>>1);
 		 // fetch image blocks
          for ( int i = 0; i < blocks; i++ )
-		 {//char out[33]; itoa(blocks,out,10);
-			 //if(i==30)env->ThrowError("in 30");
+		 {
             const FakeBlockData &blockB = mvClipB.GetBlock(0, i);
             const FakeBlockData &blockF = mvClipF.GetBlock(0, i);
 						
