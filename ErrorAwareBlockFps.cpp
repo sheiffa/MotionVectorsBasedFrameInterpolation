@@ -6,8 +6,9 @@ ErrorAwareBlockFps::ErrorAwareBlockFps(PClip source, PClip super, PClip backward
 	fpsDivisor(2), //prototype
 	fpsMultiplier(fpsMultiplier)
 {
-	sourceFps=source->GetVideoInfo().fps_numerator;
-	
+	sourceFps=source->GetVideoInfo().fps_numerator/source->GetVideoInfo().fps_denominator;
+
+	for(int numberOfVectorClip=0; numberOfVectorClip<2; numberOfVectorClip++){
 	//separate clip into number of clips specified by fpsDivisor and calculate vectors
 	DivideFps** loweredFpsClips=new DivideFps* [fpsDivisor];
 	MVSuper** loweredFpsSuperClips=new MVSuper* [fpsDivisor];
@@ -33,15 +34,17 @@ ErrorAwareBlockFps::ErrorAwareBlockFps(PClip source, PClip super, PClip backward
 										 loweredFpsClipsForwardVectors[i],
 										 sourceFps,
 										 mode,0,0,true,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2,true,false,env);
-		
-	errorDetectionClip=new ErrorDetectionClip(source,interpolatedClips[0],interpolatedClips[1],env);
-	errorDetectionSuperClip=new MVSuper(errorDetectionClip,8,8,2,0,true,2,2,0,true,false,env);
-	errorDetectionClipVectors=new MVAnalyse(
-		errorDetectionSuperClip,
+	
+
+	errorDetectionClip[numberOfVectorClip]=new ErrorDetectionClip(source,interpolatedClips[0],interpolatedClips[1],env);
+	errorDetectionSuperClip[numberOfVectorClip]=new MVSuper(errorDetectionClip[numberOfVectorClip],8,8,2,0,true,2,2,0,true,false,env);
+	errorDetectionClipVectors[numberOfVectorClip]=new MVAnalyse(
+		errorDetectionSuperClip[numberOfVectorClip],
 		8,8,0,4,2,0,
 		false,	//analyse forward to compare interpolated frames with original
 		0,true,1,1200,1,true,50,50,0,0,0,"",0,0,0,10000,24,true,true,false,false,env);
-	errorVectors=new MVClip(errorDetectionClipVectors,MV_DEFAULT_SCD1,MV_DEFAULT_SCD2, env);
+	errorVectors[numberOfVectorClip]=new MVClip(errorDetectionClipVectors[numberOfVectorClip],MV_DEFAULT_SCD1,MV_DEFAULT_SCD2, env);
+	}
 }
 
 ErrorAwareBlockFps::~ErrorAwareBlockFps(){
@@ -101,9 +104,20 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
 	mvB = 0;
 
 	// updating Frame data for errorVectors MVClip
-	PVideoFrame mvErrorVectors = errorVectors->GetFrame(nleft, env);
-	errorVectors->Update(mvErrorVectors, env);// backward from next to current
+	PVideoFrame mvErrorVectors = errorVectors[0]->GetFrame(nleft*2, env);
+	errorVectors[0]->Update(mvErrorVectors, env);// backward from next to current
 	mvErrorVectors = 0;
+	mvErrorVectors = errorVectors[1]->GetFrame(nleft*2+2, env);
+	errorVectors[1]->Update(mvErrorVectors, env);// backward from next to current
+
+	// hopefully this way we can check if we are on the last frame
+	if (!errorVectors[1]->IsUsable()) {
+		// and then just obtain first frame twice, because we don't like proper handling of the border cases
+		mvErrorVectors = errorVectors[1]->GetFrame(nleft*2, env);
+		errorVectors[1]->Update(mvErrorVectors, env);
+	}
+	mvErrorVectors = 0;
+
 
 	PVideoFrame	src	= super->GetFrame(nleft, env);
 	PVideoFrame ref = super->GetFrame(nright, env);//  ref for backward compensation
@@ -112,7 +126,7 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
 	dst = env->NewVideoFrame(vi);
 
 	// added usability condition
-   if ( mvClipB.IsUsable() && mvClipF.IsUsable() && errorVectors->IsUsable())
+   if ( mvClipB.IsUsable() && mvClipF.IsUsable() && errorVectors[0]->IsUsable())
    {
 //		MVFrames *pFrames = mvCore->GetFrames(nIdx);
 //         PMVGroupOfFrames pRefGOFF = pFrames->GetFrame(nleft); // forward ref
@@ -275,17 +289,20 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
             const FakeBlockData &blockF = mvClipF.GetBlock(0, i);
 						
 			// obtaining block data for forward analysis only
-			const FakeBlockData &errorClipBlockLeft = errorVectors->GetBlock(0,i);
+			const FakeBlockData &errorClipBlockLeft = errorVectors[0]->GetBlock(0,i);
+			const FakeBlockData &errorClipBlockRight = errorVectors[1]->GetBlock(0,i);
 
+			//not anymore
+			/*
 			// updating errorVectors with the next proper frame if exists
-			mvErrorVectors = errorVectors->GetFrame(nleft+2, env);
+			mvErrorVectors = errorVectors->GetFrame(nleft*2+2, env);
 			errorVectors->Update(mvErrorVectors, env);
 			mvErrorVectors = 0;
 
 			// hopefully this way we can check if we are on the last frame
 			if (!errorVectors->IsUsable()) {
 				// and then just obtain first frame twice, because we don't like proper handling of the border cases
-				mvErrorVectors = errorVectors->GetFrame(nleft, env);
+				mvErrorVectors = errorVectors->GetFrame(nleft*2, env);
 				errorVectors->Update(mvErrorVectors, env);
 				mvErrorVectors = 0;
 			}
@@ -296,19 +313,21 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
 			const FakeBlockData &errorClipBlockRight = errorVectors->GetBlock(0,i);
 
 			// updating errorVectors with the former frame again because paranoya
-			mvErrorVectors = errorVectors->GetFrame(nleft, env);
+			mvErrorVectors = errorVectors->GetFrame(nleft*2, env);
 			errorVectors->Update(mvErrorVectors, env);
 			mvErrorVectors = 0;
-			
+			*/
+
+
 			// luma
             ResultBlock(pDst[0], nDstPitches[0],
                //pPlanesB[0]->GetPointer(blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8), blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8)),
-               pPlanesB[0]->GetPointer(blockB.GetX() * nPel + (((blockB.GetMV().x-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8),
-									   blockB.GetY() * nPel + (((blockB.GetMV().y-( (errorClipBlockLeft.GetMV().y*time256)>>8 + (errorClipBlockRight.GetMV().y*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8)),
+               pPlanesB[0]->GetPointer(blockB.GetX() * nPel + (((blockB.GetMV().x-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8),
+									   blockB.GetY() * nPel + (((blockB.GetMV().y-( ((errorClipBlockLeft.GetMV().y*time256)>>8) + ((errorClipBlockRight.GetMV().y*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8)),
 			   pPlanesB[0]->GetPitch(),
                //pPlanesF[0]->GetPointer(blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8), blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8)),
-			   pPlanesF[0]->GetPointer(blockF.GetX() * nPel + (((blockF.GetMV().x-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*time256)>>8), 
-									   blockF.GetY() * nPel + (((blockF.GetMV().y-( (errorClipBlockLeft.GetMV().y*time256)>>8 + (errorClipBlockRight.GetMV().y*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*time256)>>8)),
+			   pPlanesF[0]->GetPointer(blockF.GetX() * nPel + (((blockF.GetMV().x-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*time256)>>8), 
+									   blockF.GetY() * nPel + (((blockF.GetMV().y-( ((errorClipBlockLeft.GetMV().y*time256)>>8) + ((errorClipBlockRight.GetMV().y*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*time256)>>8)),
                pPlanesF[0]->GetPitch(),
 			   pRef[0], nRefPitches[0],
 			   pSrc[0], nSrcPitches[0],
@@ -319,12 +338,12 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
 			// chroma u
             if (nSuperModeYUV & UPLANE) ResultBlock(pDst[1], nDstPitches[1],
                //pPlanesB[1]->GetPointer((blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8))>>1, (blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8))/yRatioUV),
-               pPlanesB[1]->GetPointer((blockB.GetX() * nPel + (((blockB.GetMV().x-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))>>1,
-									   (blockB.GetY() * nPel + (((blockB.GetMV().y-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))/yRatioUV),
+               pPlanesB[1]->GetPointer((blockB.GetX() * nPel + (((blockB.GetMV().x-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))>>1,
+									   (blockB.GetY() * nPel + (((blockB.GetMV().y-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))/yRatioUV),
 			   pPlanesB[1]->GetPitch(),
                //pPlanesF[1]->GetPointer((blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8))>>1, (blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8))/yRatioUV),
-               pPlanesF[1]->GetPointer((blockF.GetX() * nPel + (((blockF.GetMV().x-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*time256)>>8))>>1,
-			                           (blockF.GetY() * nPel + (((blockF.GetMV().y-( (errorClipBlockLeft.GetMV().y*time256)>>8 + (errorClipBlockRight.GetMV().y*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*time256)>>8))/yRatioUV),
+               pPlanesF[1]->GetPointer((blockF.GetX() * nPel + (((blockF.GetMV().x-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*time256)>>8))>>1,
+			                           (blockF.GetY() * nPel + (((blockF.GetMV().y-( ((errorClipBlockLeft.GetMV().y*time256)>>8) + ((errorClipBlockRight.GetMV().y*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*time256)>>8))/yRatioUV),
                pPlanesF[1]->GetPitch(),
 			   pRef[1], nRefPitches[1],
 			   pSrc[1], nSrcPitches[1],
@@ -334,12 +353,12 @@ PVideoFrame __stdcall  ErrorAwareBlockFps::GetFrame(int n, IScriptEnvironment* e
 			// chroma v
             if (nSuperModeYUV & VPLANE) ResultBlock(pDst[2], nDstPitches[2],
                //pPlanesB[2]->GetPointer((blockB.GetX() * nPel + ((blockB.GetMV().x*(256-time256))>>8))>>1, (blockB.GetY() * nPel + ((blockB.GetMV().y*(256-time256))>>8))/yRatioUV),
-               pPlanesB[2]->GetPointer((blockB.GetX() * nPel + (((blockB.GetMV().x-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))>>1,
-									   (blockB.GetY() * nPel + (((blockB.GetMV().y-( (errorClipBlockLeft.GetMV().y*time256)>>8 + (errorClipBlockRight.GetMV().y*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))/yRatioUV),
+               pPlanesB[2]->GetPointer((blockB.GetX() * nPel + (((blockB.GetMV().x-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))>>1,
+									   (blockB.GetY() * nPel + (((blockB.GetMV().y-( ((errorClipBlockLeft.GetMV().y*time256)>>8) + ((errorClipBlockRight.GetMV().y*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*(256-time256))>>8))/yRatioUV),
 			   pPlanesB[2]->GetPitch(),
                //pPlanesF[2]->GetPointer((blockF.GetX() * nPel + ((blockF.GetMV().x*time256)>>8))>>1, (blockF.GetY() * nPel + ((blockF.GetMV().y*time256)>>8))/yRatioUV),
-               pPlanesF[2]->GetPointer((blockF.GetX() * nPel + (((blockF.GetMV().x-( (errorClipBlockLeft.GetMV().x*time256)>>8 + (errorClipBlockRight.GetMV().x*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*time256)>>8))>>1,
-			                           (blockF.GetY() * nPel + (((blockF.GetMV().y-( (errorClipBlockLeft.GetMV().y*time256)>>8 + (errorClipBlockRight.GetMV().y*(256-time256))>>8)/(fpsMultiplier*fpsMultiplier) )*time256)>>8))/yRatioUV),
+               pPlanesF[2]->GetPointer((blockF.GetX() * nPel + (((blockF.GetMV().x-( ((errorClipBlockLeft.GetMV().x*time256)>>8) + ((errorClipBlockRight.GetMV().x*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*time256)>>8))>>1,
+			                           (blockF.GetY() * nPel + (((blockF.GetMV().y-( ((errorClipBlockLeft.GetMV().y*time256)>>8) + ((errorClipBlockRight.GetMV().y*(256-time256))>>8))/(fpsMultiplier*fpsMultiplier) )*time256)>>8))/yRatioUV),
                pPlanesF[2]->GetPitch(),
 			   pRef[2], nRefPitches[2],
 			   pSrc[2], nSrcPitches[2],

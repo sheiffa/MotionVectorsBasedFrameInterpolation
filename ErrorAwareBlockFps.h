@@ -11,10 +11,10 @@ private:
 	int fpsMultiplier;
 	int fpsDivisor;
 	int sourceFps;
-	ErrorDetectionClip* errorDetectionClip;
-	MVSuper* errorDetectionSuperClip;
-	MVAnalyse* errorDetectionClipVectors;
-	MVClip* errorVectors;
+	ErrorDetectionClip* errorDetectionClip[2];
+	MVSuper* errorDetectionSuperClip[2];
+	MVAnalyse* errorDetectionClipVectors[2];
+	MVClip* errorVectors[2];
 
 public:
 	ErrorAwareBlockFps(PClip source, PClip super, PClip backwardVectors, PClip forwardVectors, int fpsDivisor, int fpsMultiplier, int mode, IScriptEnvironment* env);
